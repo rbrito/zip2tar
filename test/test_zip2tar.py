@@ -4,8 +4,10 @@ from __future__ import print_function
 
 import os
 import subprocess
+from textwrap import dedent
 
 import pytest
+
 
 def create_zip(td, mp):
     path = td.join('test.zip')
@@ -18,7 +20,8 @@ def create_zip(td, mp):
         print(subprocess.check_output(['zip', 'test.zip'] + fl))
     return path
 
-def z2t(zip_file, gzip=False, bzip2=False, xz=False):
+
+def z2t(zip_file, gzip=False, bzip2=False, xz=False, no_date=False):
     print('z2t ------------------')
     cmd = ['zip2tar']
     if gzip:
@@ -32,12 +35,15 @@ def z2t(zip_file, gzip=False, bzip2=False, xz=False):
         ext = 'tar.xz'
     else:
         ext = 'tar'
+    if no_date:
+        cmd.append('--no-datetime')
     cmd.append(str(zip_file))
     subprocess.check_output(cmd)
     return zip_file.new(ext=ext)
 
-def untar(tar_file):
-    return subprocess.check_output(['tar', 'tf', str(tar_file)]).decode('ascii')
+
+def untar(tar_f):
+    return subprocess.check_output(['tar', 'tf', str(tar_f)]).decode('ascii')
 
 
 class TestZ2T:
@@ -66,3 +72,12 @@ class TestZ2T:
         res = untar(t)
         assert res == 'abc\ndef\nghi\n'
 
+    def test_no_date(self, tmpdir, monkeypatch):
+        z = create_zip(tmpdir, monkeypatch)
+        t = z2t(z, bzip2=True, no_date=True)
+        res = subprocess.check_output(['tar', 'tvf', str(t)]).decode('ascii')
+        assert res == dedent("""\
+        -rw-r--r-- 0/0               3 1970-01-01 01:00 abc
+        -rw-r--r-- 0/0               3 1970-01-01 01:00 def
+        -rw-r--r-- 0/0               3 1970-01-01 01:00 ghi
+        """)

@@ -21,7 +21,7 @@ def _convert_version(tup):
     return ret_val
 
 
-version_info = (0, 2, 1)
+version_info = (0, 2, 2)
 __version__ = _convert_version(version_info)
 
 del _convert_version
@@ -31,6 +31,7 @@ from zipfile import ZipFile
 import tarfile
 import time
 import argparse
+import datetime
 
 
 # < from ruamel.std.argparse._action.count import CountAction
@@ -53,7 +54,7 @@ class CountAction(argparse.Action):
 
 # for python 2.7 you could use contextlib and lzma
 
-def zip2tar(ifn, ofn, typ=None, lvl=9):
+def zip2tar(ifn, ofn, typ=None, lvl=9, dts=None):
     """
     conversion of zip to tar in memory
     typ should be from 'gz', 'bz2', 'xz' (3.4)
@@ -67,8 +68,20 @@ def zip2tar(ifn, ofn, typ=None, lvl=9):
             for zip_info in zipf.infolist():
                 tar_info = tarfile.TarInfo(name=zip_info.filename)
                 tar_info.size = zip_info.file_size
-                tar_info.mtime = time.mktime(tuple(list(zip_info.date_time) +
-                                                   [-1, -1, -1]))
+                if dts is None:
+                    mtime = time.mktime(tuple(list(zip_info.date_time) +
+                                              [-1, -1, -1]))
+                elif dts is 0:
+                    mtime = None
+                elif isinstance(dts, datetime.datetime):
+                    print('-----------------------')
+                    mtime = time.mktime(dts.utctimetuple())
+                    if mtime < 0.0:
+                        mtime = None
+                    print(mtime)
+                print('mtime', mtime, type(mtime))
+                if mtime is not None:
+                    tar_info.mtime = mtime
                 tarf.addfile(
                     tarinfo=tar_info,
                     fileobj=zipf.open(zip_info.filename)
@@ -84,6 +97,7 @@ def main():
     parser.add_argument('--bz2', action='store_true')
     parser.add_argument('--gz', action='store_true')
     parser.add_argument('--compression-level', type=int, default=9)
+    parser.add_argument('--no-datetime', action="store_true")
     parser.add_argument('--tar-file-name')
     parser.add_argument('--version', action='version', version=__version__)
 
@@ -105,8 +119,12 @@ def main():
     if not out_file_name:
         out_file_name = args.filename.replace(
             '.zip', '.tar' + compress_extension)
+    dts = None
+    if args.no_datetime:
+        dts = 0
+    # dts = datetime.datetime(2011, 10, 2, 16, 45, 0)
     res = zip2tar(args.filename, out_file_name,
-                  compress, lvl)
+                  compress, lvl, dts=dts)
     sys.exit(res)  # if res is None -> 0 as exit
 
 if __name__ == '__main__':
