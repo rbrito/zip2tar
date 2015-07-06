@@ -5,7 +5,6 @@ from __future__ import print_function
 
 import sys
 import os
-from textwrap import dedent
 
 name_space = 'ruamel'
 package_name = 'zip2tar'
@@ -27,7 +26,7 @@ def get_version():
 
 
 def _check_convert_version(tup):
-    """create a PEP 386 pseudo-format conformant string from tuple tup"""
+    """Create a PEP 386 pseudo-format conformant string from tuple tup."""
     ret_val = str(tup[0])  # first is always digit
     next_sep = "."  # separator for next extension, can be "" or "."
     nr_digits = 0  # nr of adjacent digits in rest, to verify
@@ -62,7 +61,7 @@ version_str = _check_convert_version(version_info)
 
 if __name__ == '__main__':
     # put here so setup.py can be imported more easily
-    from setuptools import setup, find_packages, Extension
+    from setuptools import setup, find_packages
     from setuptools.command import install_lib
 
 
@@ -87,10 +86,13 @@ class MyInstallLib(install_lib.install_lib):
 
 
 def main():
-    install_requires = [
-    ]
-    # if sys.version_info < (3, 4):
-    #     install_requires.append("")
+    # for 2.6 support missing (at least):
+    # - ZipFile as context
+    # - check_output in the tests
+    assert sys.version_info >= (2, 7)
+    install_requires = []
+    if sys.version_info < (3, ):
+        install_requires.append("pyliblzma")
     packages = [full_package_name] + [(full_package_name + '.' + x) for x
                                       in find_packages(exclude=['tests'])]
     setup(
