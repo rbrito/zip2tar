@@ -4,7 +4,7 @@ from __future__ import print_function
 
 
 def _convert_version(tup):
-    """create a PEP 386 pseudo-format conformant string from tuple tup"""
+    """Create a PEP 386 pseudo-format conformant string from tuple tup."""
     ret_val = str(tup[0])  # first is always digit
     next_sep = "."  # separator for next extension, can be "" or "."
     for x in tup[1:]:
@@ -56,7 +56,8 @@ class CountAction(argparse.Action):
 
 def zip2tar(ifn, ofn, typ=None, lvl=9, dts=None):
     """
-    conversion of zip to tar in memory
+    Conversion of zip to tar in memory.
+
     typ should be from 'gz', 'bz2', 'xz' (3.4)
     """
     typ = 'w:' if typ is None else 'w:' + typ

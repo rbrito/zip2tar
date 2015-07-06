@@ -27,7 +27,7 @@ def get_version():
 
 
 def _check_convert_version(tup):
-    """create a PEP 386 pseudo-format conformant string from tuple tup"""
+    """Create a PEP 386 pseudo-format conformant string from tuple tup."""
     ret_val = str(tup[0])  # first is always digit
     next_sep = "."  # separator for next extension, can be "" or "."
     nr_digits = 0  # nr of adjacent digits in rest, to verify
