@@ -25,6 +25,7 @@
 
 from __future__ import print_function
 
+import os
 import subprocess
 from textwrap import dedent
 
@@ -34,11 +35,14 @@ _pytest_major_minor = tuple(map(int, pytest.__version__.split('.', 2)[:2]))
 assert _pytest_major_minor >= (2, 7)
 
 
-def create_zip(td, mp):
+def create_zip(td, mp, subdir=False):
     path = td.join('test.zip')
     if not path.exists():
         mp.chdir(td)
         fl = ['abc', 'def', 'ghi']
+        if subdir:
+            os.mkdir('xyz')
+            fl.append('xyz/jkl')
         for x in fl:
             with open(x, 'w') as fp:
                 fp.write(x)
@@ -46,7 +50,7 @@ def create_zip(td, mp):
     return path
 
 
-def z2t(zip_file, gzip=False, bzip2=False, xz=False, no_date=False):
+def z2t(zip_file, gzip=False, bzip2=False, xz=False, no_date=False, md5=False):
     print('z2t ------------------')
     cmd = ['zip2tar']
     if gzip:
@@ -62,8 +66,10 @@ def z2t(zip_file, gzip=False, bzip2=False, xz=False, no_date=False):
         ext = 'tar'
     if no_date:
         cmd.append('--no-datetime')
+    if md5:
+        cmd.append('--md5')
     cmd.append(str(zip_file))
-    subprocess.check_output(cmd)
+    print('zip2tar:', cmd, '\n', subprocess.check_output(cmd))
     return zip_file.new(ext=ext)
 
 
@@ -107,3 +113,12 @@ class TestZ2T:
         -rw-r--r-- 0/0               3 1970-01-01 00:00 def
         -rw-r--r-- 0/0               3 1970-01-01 00:00 ghi
         """)
+
+    def test_checksum(self, tmpdir, monkeypatch):
+        z = create_zip(tmpdir, monkeypatch, subdir=True)
+        t = z2t(z, bzip2=True, md5=True)
+        monkeypatch.chdir(tmpdir)
+        os.mkdir('tmp')
+        os.chdir('tmp')
+        subprocess.check_output(['tar', 'xvf',  str(t)])
+        print(subprocess.check_output(['md5sum', '-c', 'sum.md5']))

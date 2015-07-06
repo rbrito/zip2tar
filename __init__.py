@@ -43,7 +43,7 @@ def _convert_version(tup):
     return ret_val
 
 
-version_info = (0, 3, 2)
+version_info = (0, 3, 3)
 __version__ = _convert_version(version_info)
 
 del _convert_version
@@ -74,13 +74,18 @@ class CountAction(argparse.Action):
         setattr(namespace, self.dest, val)
 
 
-def zip2tar(in_file_name, out_file_name, typ=None, lvl=9, dts=None):
+def zip2tar(in_file_name, out_file_name, typ=None, lvl=9, dts=None,
+            md5=None):
     """
     Conversion of zip to tar in memory.
     typ should be from 'gz', 'bz2', 'xz' (3.4)
     """
-    def write_one(zip_info, tar_file):
+    md5_sum_filename = 'sum.md5'
+
+    def write_one(zip_info, tar_file, tarf, md5=None):
         tar_info = tar_file.TarInfo(name=zip_info.filename)
+        if md5 and zip_info.filename == md5_sum_filename:
+            raise NotImplementedError
         tar_info.size = zip_info.file_size
         if dts is None:
             mtime = time.mktime(tuple(list(zip_info.date_time) +
@@ -97,11 +102,32 @@ def zip2tar(in_file_name, out_file_name, typ=None, lvl=9, dts=None):
             tarinfo=tar_info,
             fileobj=zipf.open(zip_info.filename)
         )
+        if md5 is not None:
+            import hashlib
+            m = hashlib.md5()
+            m.update(zipf.open(zip_info.filename).read())
+            md5.append('{}  {}\n'.format(m.hexdigest(), zip_info.filename))
+
+    def add_md5(tar_file, tarf, md5_data):
+        if not md5_data:
+            return
+        import io
+        tar_info = tar_file.TarInfo(name=md5_sum_filename)
+        print ('------------------------------here')
+        buf = io.BytesIO()
+        buf.write(''.join(md5_data).encode('utf-8'))
+        tar_info.size = buf.tell()
+        buf.seek(0)
+        tarf.addfile(
+            tarinfo=tar_info,
+            fileobj=buf,
+        )
 
     typ = 'w:' if typ is None else 'w:' + typ
     kw = {}
     if lvl is not None:
         kw['compresslevel'] = lvl
+    md5_data = [] if md5 else None
     with ZipFile(in_file_name) as zipf:
         if typ == 'w:xz' and sys.version_info < (3, ):
             import lzma
@@ -110,11 +136,12 @@ def zip2tar(in_file_name, out_file_name, typ=None, lvl=9, dts=None):
             with contextlib.closing(lzma.LZMAFile(out_file_name, 'w')) as xz:
                 with tarfile.open(mode='w:', fileobj=xz) as tarf:
                     for zip_info in zipf.infolist():
-                        write_one(zip_info, tarfile)
+                        write_one(zip_info, tarfile, tarf, md5=md5_data)
         else:
             with tarfile.open(out_file_name, typ, **kw) as tarf:
                 for zip_info in zipf.infolist():
-                    write_one(zip_info, tarfile)
+                    write_one(zip_info, tarfile, tarf, md5_data)
+                add_md5(tarfile, tarf, md5_data)
 
 
 def main():
@@ -139,6 +166,9 @@ def main():
     parser.add_argument(
         '--tar-file-name', metavar='NAME',
         help='set tar file name (normally derived from .zip)')
+    parser.add_argument(
+        '--md5', action="store_true",
+        help="add a 'sum.md5' file (cannot already be in the zip)")
     parser.add_argument('--version', action='version', version=__version__)
 
     parser.add_argument('filename')
@@ -164,7 +194,7 @@ def main():
         dts = 0
     # dts = datetime.datetime(2011, 10, 2, 16, 45, 0)
     res = zip2tar(args.filename, out_file_name,
-                  compress, lvl, dts=dts)
+                  compress, lvl, dts=dts, md5=args.md5)
     sys.exit(res)  # if res is None -> 0 as exit
 
 if __name__ == '__main__':
