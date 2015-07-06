@@ -97,7 +97,9 @@ def main():
     parser.add_argument('--bz2', action='store_true')
     parser.add_argument('--gz', action='store_true')
     parser.add_argument('--compression-level', type=int, default=9)
-    parser.add_argument('--no-datetime', action="store_true")
+    parser.add_argument(
+        '--no-datetime', action="store_true",
+        help="don't take datetime for files from zip -> 1970-01-01")
     parser.add_argument('--tar-file-name')
     parser.add_argument('--version', action='version', version=__version__)
 
