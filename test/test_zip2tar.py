@@ -78,9 +78,9 @@ class TestZ2T:
     def test_no_date(self, tmpdir, monkeypatch):
         z = create_zip(tmpdir, monkeypatch)
         t = z2t(z, bzip2=True, no_date=True)
-        res = subprocess.check_output(['tar', 'tvf', str(t)]).decode('ascii')
+        res = subprocess.check_output(['tar', '--utc', '-tvf', str(t)]).decode('ascii')
         assert res == dedent("""\
-        -rw-r--r-- 0/0               3 1970-01-01 01:00 abc
-        -rw-r--r-- 0/0               3 1970-01-01 01:00 def
-        -rw-r--r-- 0/0               3 1970-01-01 01:00 ghi
+        -rw-r--r-- 0/0               3 1970-01-01 00:00 abc
+        -rw-r--r-- 0/0               3 1970-01-01 00:00 def
+        -rw-r--r-- 0/0               3 1970-01-01 00:00 ghi
         """)
