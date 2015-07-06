@@ -21,7 +21,7 @@ def _convert_version(tup):
     return ret_val
 
 
-version_info = (0, 2)
+version_info = (0, 2, 1)
 __version__ = _convert_version(version_info)
 
 del _convert_version
@@ -32,19 +32,21 @@ import tarfile
 import time
 import argparse
 
+
 # < from ruamel.std.argparse._action.count import CountAction
 class CountAction(argparse.Action):
     """argparse action for counting up and down
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--verbose', '-v', action=CountAction, const=1, nargs=0)
+    parser.add_argument('--verbose', '-v', action=CountAction,
+                        const=1, nargs=0)
     parser.add_argument('--quiet', '-q', action=CountAction, dest='verbose',
             const=-1, nargs=0)
     """
     def __call__(self, parser, namespace, values, option_string=None):
         try:
             val = getattr(namespace, self.dest) + self.const
-        except TypeError: # probably None
+        except TypeError:  # probably None
             val = self.const
         setattr(namespace, self.dest, val)
 
@@ -66,7 +68,7 @@ def zip2tar(ifn, ofn, typ=None, lvl=9):
                 tar_info = tarfile.TarInfo(name=zip_info.filename)
                 tar_info.size = zip_info.file_size
                 tar_info.mtime = time.mktime(tuple(list(zip_info.date_time) +
-                                         [-1, -1, -1]))
+                                                   [-1, -1, -1]))
                 tarf.addfile(
                     tarinfo=tar_info,
                     fileobj=zipf.open(zip_info.filename)
@@ -105,8 +107,7 @@ def main():
             '.zip', '.tar' + compress_extension)
     res = zip2tar(args.filename, out_file_name,
                   compress, lvl)
-    sys.exit(res) # if res is None -> 0 as exit
+    sys.exit(res)  # if res is None -> 0 as exit
 
 if __name__ == '__main__':
     main()
-

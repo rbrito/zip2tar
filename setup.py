@@ -88,7 +88,6 @@ class MyInstallLib(install_lib.install_lib):
 
 def main():
     install_requires = [
-    #    "ruamel.base",
     ]
     # if sys.version_info < (3, 4):
     #     install_requires.append("")
@@ -97,8 +96,8 @@ def main():
     setup(
         name=full_package_name,
         version=version_str,
-        description=\
-            "zip2tar, a zipfile to tar convertor without intermediate files",
+        description="""zip2tar, a zipfile to tar convertor without intermediate
+        files""",
         install_requires=install_requires,
         long_description=open('README.rst').read(),
         url='https://bitbucket.org/ruamel/' + package_name,
@@ -115,7 +114,7 @@ def main():
             'Intended Audience :: Developers',
             'License :: OSI Approved :: MIT License',
             'Operating System :: OS Independent',
-            'Programming Language :: Python3',
+            'Programming Language :: Python :: 3',
         ]
     )
 
