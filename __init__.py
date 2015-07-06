@@ -1,5 +1,27 @@
 # coding: utf-8
 
+# The MIT License (MIT)
+#
+# Copyright (c) 2013-2015 Anthon van der Neut, Ruamel bvba
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 from __future__ import print_function
 
 
@@ -21,7 +43,7 @@ def _convert_version(tup):
     return ret_val
 
 
-version_info = (0, 3)
+version_info = (0, 3, 1)
 __version__ = _convert_version(version_info)
 
 del _convert_version
@@ -52,13 +74,13 @@ class CountAction(argparse.Action):
         setattr(namespace, self.dest, val)
 
 
-def zip2tar(ifn, ofn, typ=None, lvl=9, dts=None):
+def zip2tar(in_file_name, out_file_name, typ=None, lvl=9, dts=None):
     """
     Conversion of zip to tar in memory.
     typ should be from 'gz', 'bz2', 'xz' (3.4)
     """
-    def write_one(zip_info, tarfile):
-        tar_info = tarfile.TarInfo(name=zip_info.filename)
+    def write_one(zip_info, tar_file):
+        tar_info = tar_file.TarInfo(name=zip_info.filename)
         tar_info.size = zip_info.file_size
         if dts is None:
             mtime = time.mktime(tuple(list(zip_info.date_time) +
@@ -80,16 +102,17 @@ def zip2tar(ifn, ofn, typ=None, lvl=9, dts=None):
     kw = {}
     if lvl is not None:
         kw['compresslevel'] = lvl
-    with ZipFile(ifn) as zipf:
+    with ZipFile(in_file_name) as zipf:
         if typ == 'w:xz' and sys.version_info < (3, ):
             import lzma
             import contextlib
-            with contextlib.closing(lzma.LZMAFile(ofn, 'w')) as xz:
+
+            with contextlib.closing(lzma.LZMAFile(out_file_name, 'w')) as xz:
                 with tarfile.open(mode='w:', fileobj=xz) as tarf:
                     for zip_info in zipf.infolist():
                         write_one(zip_info, tarfile)
         else:
-            with tarfile.open(ofn, typ, **kw) as tarf:
+            with tarfile.open(out_file_name, typ, **kw) as tarf:
                 for zip_info in zipf.infolist():
                     write_one(zip_info, tarfile)
 
@@ -100,14 +123,22 @@ def main():
     parser.add_argument('--verbose', '-v', help='increase verbosity level',
                         action=CountAction, const=1, nargs=0)
     if sys.version_info >= (2, 7):
-        parser.add_argument('--xz', action='store_true')
-    parser.add_argument('--bz2', action='store_true')
-    parser.add_argument('--gz', action='store_true')
+        parser.add_argument(
+            '--xz', action='store_true',
+            help='write xz compressed tar file')
+    parser.add_argument(
+        '--bz2', action='store_true',
+        help='write bzip2 compressed tar file')
+    parser.add_argument(
+        '--gz', action='store_true',
+        help='write gzip compressed tar file')
     parser.add_argument('--compression-level', type=int, default=9)
     parser.add_argument(
         '--no-datetime', action="store_true",
         help="don't take datetime for files from zip -> 1970-01-01")
-    parser.add_argument('--tar-file-name')
+    parser.add_argument(
+        '--tar-file-name', metavar='NAME',
+        help='set tar file name (normally derived from .zip)')
     parser.add_argument('--version', action='version', version=__version__)
 
     parser.add_argument('filename')

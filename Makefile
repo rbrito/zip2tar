@@ -10,3 +10,6 @@ include ~/.config/ruamel_util_new/Makefile.inc
 clean:	clean_common
 #	rm -rf build .tox $(PKGNAME).egg-info/ README.pdf
 #	find . -name "*.pyc" -exec rm {} +
+
+license: clean
+	licensecheck -r .
