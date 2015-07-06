@@ -32,6 +32,7 @@ def _check_convert_version(tup):
     next_sep = "."  # separator for next extension, can be "" or "."
     nr_digits = 0  # nr of adjacent digits in rest, to verify
     post_dev = False  # are we processig post/dev
+
     for x in tup[1:]:
         if isinstance(x, int):
             nr_digits += 1

@@ -61,8 +61,10 @@ def zip2tar(ifn, ofn, typ=None, lvl=9, dts=None):
     """
     typ = 'w:' if typ is None else 'w:' + typ
     kw = {}
+
     if lvl is not None:
         kw['compresslevel'] = lvl
+
     with ZipFile(ifn) as zipf:
         with tarfile.open(ofn, typ, **kw) as tarf:
             for zip_info in zipf.infolist():
@@ -96,6 +98,7 @@ def main():
     parser.add_argument('--xz', action='store_true')
     parser.add_argument('--bz2', action='store_true')
     parser.add_argument('--gz', action='store_true')
+
     parser.add_argument('--compression-level', type=int, default=9)
     parser.add_argument(
         '--no-datetime', action="store_true",
@@ -104,6 +107,7 @@ def main():
     parser.add_argument('--version', action='version', version=__version__)
 
     parser.add_argument('filename')
+
     args = parser.parse_args()
     lvl = args.compression_level
     if args.xz:
