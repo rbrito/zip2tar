@@ -52,7 +52,7 @@ class CountAction(argparse.Action):
         setattr(namespace, self.dest, val)
 
 
-# for python 2.7 you could use contextlib and lzma
+# TODO: for python 2.7 you could use contextlib and lzma
 
 def zip2tar(ifn, ofn, typ=None, lvl=9, dts=None):
     """
@@ -96,7 +96,9 @@ def main():
         description="in-memory zip to tar convertor")
     parser.add_argument('--verbose', '-v', help='increase verbosity level',
                         action=CountAction, const=1, nargs=0)
-    parser.add_argument('--xz', action='store_true')
+
+    if sys.version_info >= (3, 4):
+        parser.add_argument('--xz', action='store_true')
     parser.add_argument('--bz2', action='store_true')
     parser.add_argument('--gz', action='store_true')
 
@@ -111,7 +113,7 @@ def main():
 
     args = parser.parse_args()
     lvl = args.compression_level
-    if args.xz:
+    if 'xz' in args and args.xz:
         lvl = None
         compress = 'xz'
     elif args.bz2:

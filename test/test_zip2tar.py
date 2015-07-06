@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import os
 import subprocess
+import sys
 from textwrap import dedent
 
 import pytest
@@ -67,6 +68,8 @@ class TestZ2T:
         res = untar(t)
         assert res == 'abc\ndef\nghi\n'
 
+    @pytest.mark.skipif(sys.version_info < (3, 4),
+                        reason='requires python 3.4')
     def test_xz(self, tmpdir, monkeypatch):
         z = create_zip(tmpdir, monkeypatch)
         t = z2t(z, xz=True)
