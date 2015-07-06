@@ -43,7 +43,8 @@ def z2t(zip_file, gzip=False, bzip2=False, xz=False, no_date=False):
 
 
 def untar(tar_file):
-    return subprocess.check_output(['tar', 'tf', str(tar_file)]).decode('ascii')
+    cmd = ['tar', 'tf', str(tar_file)]
+    return subprocess.check_output(cmd).decode('ascii')
 
 
 class TestZ2T:
