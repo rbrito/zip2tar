@@ -5,7 +5,6 @@ from __future__ import print_function
 
 import sys
 import os
-from textwrap import dedent
 
 name_space = 'ruamel'
 package_name = 'zip2tar'
@@ -63,7 +62,7 @@ version_str = _check_convert_version(version_info)
 
 if __name__ == '__main__':
     # put here so setup.py can be imported more easily
-    from setuptools import setup, find_packages, Extension
+    from setuptools import setup, find_packages
     from setuptools.command import install_lib
 
 
