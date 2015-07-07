@@ -43,7 +43,7 @@ def _convert_version(tup):
     return ret_val
 
 
-version_info = (0, 3, 3)
+version_info = (0, 4)
 __version__ = _convert_version(version_info)
 
 del _convert_version
@@ -74,74 +74,126 @@ class CountAction(argparse.Action):
         setattr(namespace, self.dest, val)
 
 
-def zip2tar(in_file_name, out_file_name, typ=None, lvl=9, dts=None,
-            md5=None):
-    """
-    Conversion of zip to tar in memory.
-    typ should be from 'gz', 'bz2', 'xz' (3.4)
-    """
-    md5_sum_filename = 'sum.md5'
+class Tar(object):
+    def __init__(self, file_name, typ, **kw):
+        """
+        create a (compressed) tar file for writing in-memory objects
+        typ should be from 'gz', 'bz2', 'xz'
+        """
+        self._file_name = file_name
+        self._typ = 'w:' if typ is None else 'w:' + typ
+        self._kw = kw
+        self._md5 = None
+        self._md5_data = []
+        self._fp = None
+        self._dts = None
+        self._xz = None
 
-    def write_one(zip_info, tar_file, tarf, md5=None):
-        tar_info = tar_file.TarInfo(name=zip_info.filename)
-        if md5 and zip_info.filename == md5_sum_filename:
+    @property
+    def fp(self):
+        if self._fp is None:
+            if self._typ == 'w:xz' and sys.version_info < (3, ):
+                import lzma
+
+                self._xz = xz = lzma.LZMAFile(self._file_name, 'w')
+                self._fp = tarfile.open(mode='w:', fileobj=xz, **self._kw)
+            else:
+                self._fp = tarfile.open(self._file_name, self._typ, **self._kw)
+        return self._fp
+
+    @property
+    def dts(self):
+        return self._dts
+
+    @dts.setter
+    def dts(self, val):
+        self._dts = val
+
+    @property
+    def md5(self):
+        return self._md5
+
+    def compression_level(self, val):
+        if self._typ in ['w:bz2', 'w:gz']:
+            self._kw['compresslevel'] = val
+
+    @md5.setter
+    def md5(self, val):
+        self._md5 = 'sum.md5' if val is True else val
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_inst, exc_tb):
+        if self._fp:
+            if self._md5_data:
+                import io
+                buf = io.BytesIO()
+                buf.write(''.join(self._md5_data).encode('utf-8'))
+                size = buf.tell()
+                buf.seek(0)
+                self.write_one_obj(self._md5, size, buf)
+            self._fp.close()
+            self._fp = None
+        if self._xz:
+            self._xz.close()
+            self._xz = None
+
+    def write_one_obj(self, file_name, data_len, data_obj, date_time=None):
+        tar_info = tarfile.TarInfo(name=file_name)
+        if file_name is not self._md5 and self._md5 and file_name == self._md5:
             raise NotImplementedError
-        tar_info.size = zip_info.file_size
-        if dts is None:
-            mtime = time.mktime(tuple(list(zip_info.date_time) +
-                                      [-1, -1, -1]))
-        elif dts is 0:
+        tar_info.size = data_len
+        if self.dts is 0:
             mtime = None
-        elif isinstance(dts, datetime.datetime):
-            mtime = time.mktime(dts.utctimetuple())
+        elif isinstance(self.dts, datetime.datetime):
+            mtime = time.mktime(self.dts.utctimetuple())
             if mtime < 0.0:
                 mtime = None
+        elif date_time is None:
+            mtime = None
+        elif self.dts is None:
+            mtime = time.mktime(tuple(list(date_time) +
+                                      [-1, -1, -1]))
         if mtime is not None:
             tar_info.mtime = mtime
-        tarf.addfile(
-            tarinfo=tar_info,
-            fileobj=zipf.open(zip_info.filename)
-        )
-        if md5 is not None:
+        if file_name is not self._md5 and self._md5:
+            # test on data_obj.seek(0) to not create BytesIO is supported?
             import hashlib
+            import io
+            # have to deal with reading data_obj twice
+            buf = io.BytesIO(data_obj.read())
             m = hashlib.md5()
-            m.update(zipf.open(zip_info.filename).read())
-            md5.append('{}  {}\n'.format(m.hexdigest(), zip_info.filename))
+            m.update(buf.read())
+            buf.seek(0)
+            self._md5_data.append(
+                '{}  {}\n'.format(m.hexdigest(), file_name))
+            data_obj = buf
+        self.fp.addfile(tarinfo=tar_info, fileobj=data_obj)
 
-    def add_md5(tar_file, tarf, md5_data):
-        if not md5_data:
-            return
-        import io
-        tar_info = tar_file.TarInfo(name=md5_sum_filename)
-        print ('------------------------------here')
-        buf = io.BytesIO()
-        buf.write(''.join(md5_data).encode('utf-8'))
-        tar_info.size = buf.tell()
-        buf.seek(0)
-        tarf.addfile(
-            tarinfo=tar_info,
-            fileobj=buf,
-        )
+    def convert_zip(self, in_file_name):
+        with ZipFile(in_file_name) as zipf:
+            for zip_info in zipf.infolist():
+                self.write_one_obj(
+                    zip_info.filename,
+                    zip_info.file_size,
+                    zipf.open(zip_info.filename),
+                    zip_info.date_time,
+                )
 
-    typ = 'w:' if typ is None else 'w:' + typ
+
+def zip2tar(in_file_name, out_file_name, typ=None, lvl=9):
+    """
+    Conversion of zip to tar in memory.
+    typ should be from 'gz', 'bz2', 'xz'
+    lvl is the compression level for 'gz' and 'bz2' lower it for higher speed
+    """
+    # typ = 'w:' if typ is None else 'w:' + typ
     kw = {}
     if lvl is not None:
         kw['compresslevel'] = lvl
-    md5_data = [] if md5 else None
-    with ZipFile(in_file_name) as zipf:
-        if typ == 'w:xz' and sys.version_info < (3, ):
-            import lzma
-            import contextlib
-
-            with contextlib.closing(lzma.LZMAFile(out_file_name, 'w')) as xz:
-                with tarfile.open(mode='w:', fileobj=xz) as tarf:
-                    for zip_info in zipf.infolist():
-                        write_one(zip_info, tarfile, tarf, md5=md5_data)
-        else:
-            with tarfile.open(out_file_name, typ, **kw) as tarf:
-                for zip_info in zipf.infolist():
-                    write_one(zip_info, tarfile, tarf, md5_data)
-                add_md5(tarfile, tarf, md5_data)
+    with Tar(out_file_name, typ=typ, **kw) as tar:
+        tar.convert_zip(in_file_name)
 
 
 def main():
@@ -173,29 +225,30 @@ def main():
 
     parser.add_argument('filename')
     args = parser.parse_args()
-    lvl = args.compression_level
     if sys.version_info >= (2, 7) and args.xz:
-        lvl = None
         compress = 'xz'
     elif args.bz2:
         compress = 'bz2'
     elif args.gz:
         compress = 'gz'
     else:
-        lvl = None
         compress = None
     compress_extension = '.' + compress if compress else ''
     out_file_name = args.tar_file_name
     if not out_file_name:
         out_file_name = args.filename.replace(
             '.zip', '.tar' + compress_extension)
-    dts = None
-    if args.no_datetime:
-        dts = 0
     # dts = datetime.datetime(2011, 10, 2, 16, 45, 0)
-    res = zip2tar(args.filename, out_file_name,
-                  compress, lvl, dts=dts, md5=args.md5)
-    sys.exit(res)  # if res is None -> 0 as exit
+    with Tar(out_file_name, compress) as tarf:
+        tarf.compression_level(args.compression_level)
+        if args.no_datetime:
+            tarf.dts = 0
+        if args.md5:
+            tarf.md5 = args.md5
+        tarf.convert_zip(args.filename)
+
+    # res = zip2tar(args.filename, out_file_name, compress)
+    sys.exit(0)  # if res is None -> 0 as exit
 
 if __name__ == '__main__':
     main()

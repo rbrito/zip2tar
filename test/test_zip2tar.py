@@ -69,7 +69,9 @@ def z2t(zip_file, gzip=False, bzip2=False, xz=False, no_date=False, md5=False):
     if md5:
         cmd.append('--md5')
     cmd.append(str(zip_file))
-    print('zip2tar:', cmd, '\n', subprocess.check_output(cmd))
+    res = subprocess.check_output(cmd)
+    print('zip2tar:', cmd, '\n', res)
+    assert res.decode('utf-8') == ''  # catch print statements in code
     return zip_file.new(ext=ext)
 
 
